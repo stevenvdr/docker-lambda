@@ -1,14 +1,14 @@
-FROM public.ecr.aws/lambda/provided:al2 AS builder
+FROM public.ecr.aws/lambda/provided:al2023 AS builder
 
 LABEL maintainer="lambgeo <geolambdas@gmail.com>"
 
-RUN yum update -y && \
-    yum install -y git autoconf libtool flex bison cmake make \
-      tar gzip gcc gcc-c++ automake16 libpng-devel nasm \
-      libxml2-devel readline-devel openssl-devel curl-devel \
-      cmake3 && \
-    yum clean all && \
-    rm -rf /var/cache/yum /var/lib/yum/history
+RUN dnf update -y && \
+    dnf install -y git autoconf libtool flex bison cmake make \
+      tar gzip gcc gcc-c++ libpng-devel nasm \
+      libxml2-devel readline-devel openssl-devel libcurl-devel \
+      openblas-devel lapack-devel && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
 
 ENV PREFIX /opt
 
@@ -97,7 +97,7 @@ RUN mkdir /tmp/jpeg \
   && curl -sfL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/${LIBJPEG_TURBO_VERSION}.tar.gz | tar zxf - -C /tmp/jpeg --strip-components=1 \
   && cd /tmp/jpeg \
   && mkdir build && cd build \
-  && cmake3 .. \
+  && cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR:PATH=lib \
@@ -128,7 +128,7 @@ ENV LERC_VERSION=2.2.1
 RUN mkdir /tmp/lerc \
   && curl -sfL https://github.com/Esri/lerc/archive/v${LERC_VERSION}.tar.gz | tar zxf - -C /tmp/lerc --strip-components=1 \
   && cd /tmp/lerc \
-  && cmake3 . \
+  && cmake . \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR:PATH=lib \
@@ -170,7 +170,7 @@ RUN mkdir /tmp/openjpeg \
   && curl -sfL https://github.com/uclouvain/openjpeg/archive/v${OPENJPEG_VERSION}.tar.gz | tar zxf - -C /tmp/openjpeg --strip-components=1 \
   && cd /tmp/openjpeg \
   && mkdir build && cd build \
-  && cmake3 .. \
+  && cmake .. \
     -DBUILD_THIRDPARTY:BOOL=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
@@ -186,7 +186,7 @@ RUN mkdir /tmp/geos \
   && curl -sfL https://github.com/libgeos/geos/archive/refs/tags/${GEOS_VERSION}.tar.gz | tar zxf - -C /tmp/geos --strip-components=1 \
   && cd /tmp/geos \
   && mkdir build && cd build \
-  && cmake3 .. \
+  && cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR:PATH=lib \
@@ -212,7 +212,7 @@ RUN mkdir /tmp/proj && mkdir /tmp/proj/data \
   && curl -sfL https://github.com/OSGeo/proj/archive/${PROJ_VERSION}.tar.gz | tar zxf - -C /tmp/proj --strip-components=1 \
   && cd /tmp/proj \
   && mkdir build && cd build \
-  && cmake3 .. \
+  && cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR:PATH=lib \
@@ -243,7 +243,7 @@ ENV BLOSC_VERSION=1.21.0
 RUN mkdir /tmp/blosc \
   && curl -sfL https://github.com/Blosc/c-blosc/archive/refs/tags/v${BLOSC_VERSION}.tar.gz | tar zxf - -C /tmp/blosc --strip-components=1 \
   && cd /tmp/blosc \
-  && cmake3 -G"Unix Makefiles" \
+  && cmake -G"Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
     -DCMAKE_INSTALL_LIBDIR:PATH=lib \
     -DCMAKE_INSTALL_RPATH="$ORIGIN" \
@@ -330,7 +330,7 @@ RUN mkdir /tmp/netcdf \
 #   && curl -sfL https://github.com/google/highway/archive/refs/tags/0.16.0.tar.gz | tar zxf - -C /tmp/libhwy --strip-components=1 \
 #   && cd /tmp/libhwy \
 #   && mkdir build && cd build \
-#   && cmake3 .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=$PREFIX \
+#   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=$PREFIX \
 #   && make -j $(nproc) install && make clean \
 #   && rm -rf /tmp/libhwy
 
@@ -350,38 +350,34 @@ RUN mkdir /tmp/netcdf \
 #   && curl -sfL https://github.com/libjxl/libjxl/archive/refs/tags/v${JXL_VERSION}.tar.gz | tar zxf - -C /tmp/jxl --strip-components=1 \
 #   && cd /tmp/jxl \
 #   && mkdir build && cd build \
-#   && cmake3 .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=$PREFIX \
+#   && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=$PREFIX \
 #   && make -j $(nproc) install && make clean \
 #   && rm -rf /tmp/jxl
 
 # We use commit sha to make sure we are not using `cache` when building the docker image
 # "7ca88116f5a46d429251361634eb24629f315076" is the latest commit on release/3.6 branch
 
+# Install Miniforge for conda package management
+ENV MINIFORGE_VERSION=24.3.0-0
+RUN curl -sfL https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh -o miniforge.sh \
+  && chmod +x miniforge.sh \
+  && ./miniforge.sh -b -p /opt/miniforge \
+  && rm miniforge.sh
 
-# GDAL
+ENV PATH="/opt/miniforge/bin:$PATH"
+
+# GDAL via conda-forge
 ARG GDAL_VERSION
-RUN mkdir /tmp/gdal \
-  && curl -sfL https://github.com/OSGeo/gdal/archive/refs/tags/v${GDAL_VERSION}.tar.gz | tar zxf - -C /tmp/gdal --strip-components=1 \
-  && cd /tmp/gdal \
-  && mkdir build && cd build \
-  && cmake3 .. \
-    -DGDAL_USE_EXTERNAL_LIBS=ON \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX \
-    -DCMAKE_INSTALL_LIBDIR:PATH=lib \
-    -DCMAKE_C_FLAGS="-O2 -Wl,-S" \
-    -DCMAKE_CXX_FLAGS="-O2 -Wl,-S" \
-    -DGDAL_SET_INSTALL_RELATIVE_RPATH=ON \
-    -DGDAL_USE_TIFF_INTERNAL=OFF \
-    -DGDAL_USE_GEOTIFF_INTERNAL=OFF \
-    -DGDAL_USE_LERC_INTERNAL=OFF \
-    -DLERC_INCLUDE_DIR=$PREFIX/include \
-    -DLERC_LIBRARY=$PREFIX/lib/libLercLib.so \
-    -DPNG_PNG_INCLUDE_DIR=$PREFIX/include \
-    -DPNG_LIBRARY_RELEASE=$PREFIX/lib/libpng.so \
-    -DBUILD_PYTHON_BINDINGS=OFF \
-  && make -j $(nproc) --silent && make install \
-  && rm -rf /tmp/gdal
+ENV CONDA_ENV_NAME=gdal-env
+RUN mamba create -n "${CONDA_ENV_NAME}" -c conda-forge gdal="${GDAL_VERSION}" --yes \
+  && conda clean -afy
+
+# Copy GDAL installation from conda environment to /opt
+RUN cp -r "/opt/miniforge/envs/${CONDA_ENV_NAME}/bin"/* $PREFIX/bin/ \
+  && cp -r "/opt/miniforge/envs/${CONDA_ENV_NAME}/lib"/* $PREFIX/lib/ \
+  && cp -r "/opt/miniforge/envs/${CONDA_ENV_NAME}/include"/* $PREFIX/include/ \
+  && cp -r "/opt/miniforge/envs/${CONDA_ENV_NAME}/share"/* $PREFIX/share/ \
+  && rm -rf /opt/miniforge
 
 # from https://github.com/pypa/manylinux/blob/d8ef5d47433ba771fa4403fd48f352c586e06e43/docker/build_scripts/build.sh#L133-L138
 # Install patchelf (latest with unreleased bug fixes)
@@ -402,7 +398,7 @@ RUN for i in $PREFIX/bin/*; do patchelf --force-rpath --set-rpath '$ORIGIN/../li
 RUN for i in $PREFIX/lib/*.so; do patchelf --force-rpath --set-rpath '$ORIGIN' $i; done
 
 # Build final image
-FROM public.ecr.aws/lambda/provided:al2 AS runner
+FROM public.ecr.aws/lambda/provided:al2023 AS runner
 
 ENV PREFIX /opt
 COPY --from=builder /opt/lib/ $PREFIX/lib/
