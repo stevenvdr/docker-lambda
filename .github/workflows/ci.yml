@@ -2,12 +2,6 @@ name: CI
 
 on:
   push:
-    paths:
-    - 'dockerfiles/**'
-    - 'scripts/deploy.py'
-    - 'scripts/create-layer.sh'
-    - 'tests/*'
-    - '.github/workflows/ci.yml'
     branches:
     - master
     tags:
