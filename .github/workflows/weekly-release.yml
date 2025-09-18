@@ -1,0 +1,20 @@
+name: Weekly Release
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Runs every Sunday at midnight UTC
+
+jobs:
+  create-weekly-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push weekly tag
+        run: |
+          TAG=$(date +%Y.%m.%d)
+          git tag $TAG
+          git push origin $TAG
