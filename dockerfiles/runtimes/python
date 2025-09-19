@@ -14,7 +14,7 @@ ENV \
   LC_ALL=en_US.UTF-8 \
   CFLAGS="--std=c99"
 
-RUN ${PKG_INSTALLER} install -y gcc gcc-c++ && \
+RUN ${PKG_INSTALLER} install -y gcc gcc-c++ openblas-devel lapack-devel && \
     ${PKG_INSTALLER} clean all
 
 RUN \
